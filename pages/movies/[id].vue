@@ -21,7 +21,7 @@
             <li v-for="session in sessions" :key="session.daytime" class="session-item">
               <p class="font-medium">{{ session.showdate }}:</p>
               <div class="flex flex-wrap space-x-2 mt-2">
-                <span v-for="time in session.daytime.split(';')" :key="time" class="font-bold cursor-pointer text-blue-600 hover:text-blue-800" @click="checkPlaces(session)">{{ time }}</span>
+                <span v-for="time in session.daytime.split(';')" :key="time" class="font-bold cursor-pointer text-blue-600 hover:text-blue-800" @click="checkPlaces({showdate:session.showdate, daytime:time})">{{ time }}</span>
               </div>
             </li>
           </ul>
@@ -29,7 +29,7 @@
       </div>
     </div>
   </div>
-  <Modal v-if="showModal" @close="showModal = false">
+  <Modal v-if="showModal" @close="closeModal()">
     <template v-slot:header>
       <h2 class="text-2xl font-semibold">Доступні місця</h2>
     </template>
@@ -38,7 +38,7 @@
         <div v-for="(row, rowIndex) in freePlaces" :key="rowIndex" class="flex mb-2">
           <span class="font-bold mr-4 text-xs w-6">Р{{ rowIndex + 1 }}:</span>
           <div class="flex space-x-0.5">
-            <span v-for="seat in row[1]" :key="seat.seat" :class="seat.is_free ? 'bg-green-500' : 'bg-red-500'" class="w-5 h-5 text-xs rounded flex items-center justify-center cursor-pointer">
+            <span v-for="seat in row[1]" :key="seat.seat" :class="seat.is_free ? 'bg-green-500' : 'bg-red-500'" class="w-5 h-5 text-xs rounded flex items-center justify-center cursor-pointer" @click="seat.is_free ? bookPlace(rowIndex + 1, seat.seat) : null">
               {{ seat.seat }}
             </span>
           </div>
@@ -48,35 +48,27 @@
   </Modal>
 </template>
 
-
-
 <script setup lang="ts">
-import {ref} from 'vue'
-import {useCinemaAPI} from '~/composables/useCinemaAPI'
-import type {Movie} from '~/types/Movie'
-import type {Session} from '~/types/Session'
+import { ref } from 'vue'
+import { useRoute } from 'vue-router'
+import { useCinemaAPI } from '~/composables/useCinemaAPI'
+import type { Movie } from '~/types/Movie'
+import type { Session } from '~/types/Session'
 
 const movie = ref<Movie | null>(null)
 const sessions = ref<Session[] | null>(null)
+const selectedSession = ref<Session | null>(null)
 const loading = ref<boolean>(true)
 const error = ref<string | null>(null)
+const freePlaces = ref<any[]>([])
+const showModal = ref(false)
+const ticket = ref<object | null>(null)
 const route = useRoute()
 const movieId = route.params.id as string
 
-interface Seat {
-  seat: number;
-  is_free: boolean;
-}
-
-interface Row {
-  row: number;
-  seats: Seat[];
-}
-const freePlaces = ref<any[]>([]);
-const showModal = ref(false);
 async function fetchMovie(id: string) {
   try {
-    const {data} = await useCinemaAPI(`/movies/?movie_id=${id}`)
+    const { data } = await useCinemaAPI(`/movies/?movie_id=${id}`)
     const movieRes = JSON.parse(data?.value.toString())
     movie.value = movieRes.data[0]
   } catch (err) {
@@ -85,31 +77,66 @@ async function fetchMovie(id: string) {
     loading.value = false
   }
 }
-
+function closeModal() {
+  showModal.value = false;
+  selectedSession.value=null;
+}
 async function fetchSessions(id: string) {
   try {
-    const {data} = await useCinemaAPI(`/movieShows?movie_id=${id}`)
+    const { data } = await useCinemaAPI(`/movieShows?movie_id=${id}`)
     const sessionsRes = JSON.parse(data?.value.toString())
     sessions.value = sessionsRes.data[movieId]
-    console.log(sessionsRes.data);
+    console.log(sessionsRes.data)
   } catch (err) {
     error.value = 'Помилка при завантаженні сеансів'
   }
 }
 
 async function checkPlaces(session: Session) {
-  if (!session) return;
-  loading.value = true;
+  if (!session) return
+  loading.value = true
   try {
     const { data } = await useCinemaAPI(
         `/showPlaces?movie_id=${movieId}&daytime=${session.daytime}&showdate=${session.showdate}`
-    );
-    freePlaces.value = JSON.parse(data?.value.toString())?.data || [];
-    showModal.value = true;
+    )
+    freePlaces.value = JSON.parse(data?.value.toString())?.data || []
+    selectedSession.value = session;
+    showModal.value = true
   } catch (err) {
-    error.value = 'Помилка при перевірці місць';
+    error.value = 'Помилка при перевірці місць'
   } finally {
-    loading.value = false;
+    loading.value = false
+  }
+}
+
+async function bookPlace(row: number, seat: number) {
+  console.log(seat);
+  loading.value = true
+  if (!selectedSession.value) return;
+  try {
+    const response = await useCinemaAPI('/bookPlace', {
+      method: 'POST',
+      body: {
+        movie_id: movieId,
+        row,
+        seat,
+        showdate: selectedSession.value.showdate,
+        daytime: selectedSession.value.daytime
+      }
+    })
+    console.log(response);
+    const bookRes = JSON.parse(response.data?.value.toString())
+    if (bookRes.error_code === 0) {
+      ticket.value = bookRes.data
+      alert(`${bookRes.data.row} ряд, ${bookRes.data.seat} місце заброньоване! Дата та час: ${bookRes.data.showdate} | ${bookRes.data.daytime}`)
+      closeModal();
+    } else {
+      error.value = bookRes.error_message
+    }
+  } catch (err) {
+    error.value = 'Помилка при бронюванні місця'
+  } finally {
+    loading.value = false
   }
 }
 
@@ -121,5 +148,9 @@ await fetchSessions(movieId)
 .movie-poster {
   max-height: 400px;
   object-fit: cover;
+}
+
+button {
+  cursor: pointer;
 }
 </style>
