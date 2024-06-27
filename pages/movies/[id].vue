@@ -69,6 +69,7 @@ const movieId = route.params.id as string
 async function fetchMovie(id: string) {
   try {
     const { data } = await useCinemaAPI(`/movies/?movie_id=${id}`)
+    if (!data?.value) throw new Error();
     const movieRes = JSON.parse(data?.value.toString())
     movie.value = movieRes.data[0]
   } catch (err) {
@@ -84,6 +85,7 @@ function closeModal() {
 async function fetchSessions(id: string) {
   try {
     const { data } = await useCinemaAPI(`/movieShows?movie_id=${id}`)
+    if (!data?.value) throw new Error();
     const sessionsRes = JSON.parse(data?.value.toString())
     sessions.value = sessionsRes.data[movieId]
   } catch (err) {
