@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center mb-5">
+  <div class="flex w-full items-center mb-5">
     <input v-model="searchTerm" type="text" placeholder="Шукати за імʼям" class="mr-2 p-2 border border-gray-300 rounded">
     <select v-model="selectedGenre" class="mr-2 p-2 border border-gray-300 rounded">
       <option value="">Всі жанри</option>
