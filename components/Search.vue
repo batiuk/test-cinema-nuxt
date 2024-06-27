@@ -27,7 +27,6 @@ const genres = [
 const emit = defineEmits(['search']);
 
 function search() {
-  // Emit event to parent component with search criteria
   const searchCriteria = {
     name: searchTerm.value,
     genres: selectedGenre.value !== '' ? parseInt(selectedGenre.value) : '',

@@ -86,7 +86,6 @@ async function fetchSessions(id: string) {
     const { data } = await useCinemaAPI(`/movieShows?movie_id=${id}`)
     const sessionsRes = JSON.parse(data?.value.toString())
     sessions.value = sessionsRes.data[movieId]
-    console.log(sessionsRes.data)
   } catch (err) {
     error.value = 'Помилка при завантаженні сеансів'
   }
@@ -99,7 +98,8 @@ async function checkPlaces(session: Session) {
     const { data } = await useCinemaAPI(
         `/showPlaces?movie_id=${movieId}&daytime=${session.daytime}&showdate=${session.showdate}`
     )
-    freePlaces.value = JSON.parse(data?.value.toString())?.data || []
+    if (!data?.value) throw new Error();
+    freePlaces.value = JSON.parse(data.value.toString())?.data || []
     selectedSession.value = session;
     showModal.value = true
   } catch (err) {
@@ -110,11 +110,10 @@ async function checkPlaces(session: Session) {
 }
 
 async function bookPlace(row: number, seat: number) {
-  console.log(seat);
   loading.value = true
   if (!selectedSession.value) return;
   try {
-    const response = await useCinemaAPI('/bookPlace', {
+    const { data } = await useCinemaAPI('/bookPlace', {
       method: 'POST',
       body: {
         movie_id: movieId,
@@ -124,8 +123,8 @@ async function bookPlace(row: number, seat: number) {
         daytime: selectedSession.value.daytime
       }
     })
-    console.log(response);
-    const bookRes = JSON.parse(response.data?.value.toString())
+    if (!data?.value) throw new Error();
+    const bookRes = JSON.parse(data.value.toString())
     if (bookRes.error_code === 0) {
       ticket.value = bookRes.data
       alert(`${bookRes.data.row} ряд, ${bookRes.data.seat} місце заброньоване! Дата та час: ${bookRes.data.showdate} | ${bookRes.data.daytime}`)

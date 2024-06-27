@@ -2,6 +2,7 @@
   <div class="p-8">
     <Search @search="searchMovies" />
     <div v-if="movies" class="grid grid-cols-1 gap-8 py-8">
+      <p v-if="movies.length === 0">Фільмів не знайдено</p>
       <MovieCard v-for="movie in movies" :key="movie.id" :movie="movie" :sessions="sessions[movie.id]" />
     </div>
     <p v-if="!movies && !error">Завантаження...</p>
@@ -12,7 +13,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useCinemaAPI } from '~/composables/useCinemaAPI';
-import type { ApiResponse } from '~/types/ApiResponce';
+import type { ApiResponse } from '~/types/ApiResponse';
 import type { Movie } from '~/types/Movie';
 import type {Session} from "~/types/Session";
 
@@ -23,6 +24,7 @@ const error = ref<string | null>(null)
 async function fetchMovies(url: string) {
   try {
     const { data } = await useCinemaAPI(url)
+    if (!data?.value) throw new Error();
     const moviesRes = <ApiResponse<Movie[]>>JSON.parse(data?.value.toString())
     movies.value = moviesRes.data;
   } catch (err) {
@@ -32,6 +34,7 @@ async function fetchMovies(url: string) {
 async function fetchSessions() {
   try {
     const { data } = await useCinemaAPI('/movieShows')
+    if (!data?.value) throw new Error();
     const sessionsRes = <ApiResponse<Session[]>>JSON.parse(data?.value.toString())
     sessions.value = sessionsRes.data;
   } catch (err) {
@@ -48,5 +51,4 @@ function searchMovies(searchCriteria: { name: string, genres?: number }) {
 
 fetchMovies('/movies')
 await fetchSessions();
-console.log(sessions.value);
 </script>

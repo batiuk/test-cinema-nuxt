@@ -1,5 +1,3 @@
-<!-- components/MovieCard.vue -->
-
 <template>
   <div class="movie-card min-h-[320px] bg-white shadow-md rounded-lg overflow-hidden flex">
     <img :src="movie.image" alt="Movie Poster" class="min-w-[260px] max-w-[260px] h-fit">
